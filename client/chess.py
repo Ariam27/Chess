@@ -262,6 +262,7 @@ class Board():
         self.positions = [[]]
         self.epsquare = ()
         self.halfmove_clock = 0
+        self.result = ""
         
         for i in range(self.board.shape[0]):
             for o in range(self.board.shape[1]):
@@ -491,22 +492,26 @@ class Board():
         return [False]
 
     def execute(self, move):
-        move.execute()
-
-        self.to_move = "white" if self.to_move == "black" else "black"
-        self.update()
-
         if len(self.moves[-1]) == 2:
             self.moves.append([])           
         self.moves[-1].append(move.name)
+
+        self.halfmove_clock += 1
+        if isinstance(move.piece, Pawn) or "x" in move.name:
+            self.halfmove_clock = 0
+
+        if self.halfmove_clock == 0 or isinstance(move, (KingSideCastle, QueenSideCastle)):
+            self.positions = [[]]
+            if self.to_move == "black":
+                self.positions[-1].append("")
 
         if len(self.positions[-1]) == 2:
             self.positions.append([])        
         self.positions[-1].append(str(self))
 
-        self.halfmove_clock += 1
-        if isinstance(move.piece, Pawn) or "x" in move.name:
-            self.halfmove_clock = 0
+        move.execute()
+        self.to_move = "white" if self.to_move == "black" else "black"
+        self.update()
 
         self.epsquare = ()
         if len(self.moves[-1][-1]) == 2 and (self.moves[-1][-1].endswith("4") or self.moves[-1][-1].endswith("5")):
@@ -519,6 +524,28 @@ class Board():
 
             if not bool([i[0 if last_mover == "white" else 1] for i in self.moves if i[0 if last_mover == "white" else 1] == last[0]+str(3 if last_mover == "white" else 6)]):
                 self.epsquare = (names_rows.index(int(last[1])+(-1 if last_mover == "white" else 1)), names_columns.index(last[0]))
+    
+    def calc_result(self):
+        if self.result == "":
+            legal_moves = [j for k in self.generate_legal_moves().values() for j in k]
+            if legal_moves == []:
+                to_move = self.white if self.to_move == "white" else self.black
+                if to_move.check:
+                    self.result = f"[{'WHITE' if self.to_move == 'black' else 'BLACK'}] [CHECKMATE]"
+                else:
+                    self.result = "[DRAW] [STALEMATE]"
+            else:
+                if self.halfmove_clock == 100:
+                    self.result = "[DRAW] [50 MOVE RULE]"
+                print(self.positions)
+                if self.positions != [[]]:
+                    current_position = self.positions[-1][-1]
+                    position_color = 1 if self.to_move == "white" else 0
+                    matching_positions = [i[position_color] for i in self.positions if i[position_color] == current_position]
+                    if len(matching_positions) == 3:
+                        self.result = "[DRAW] [3 FOLD REPETITION]"
+
+        return self.result
 
     def as_pgn(self):
         pgn = ""
@@ -533,7 +560,8 @@ class Board():
         for i in range(self.board.shape[0]):
             for o in range(self.board.shape[1]):
                 if (i,o) == self.epsquare:
-                    position += "x"
+                    #position += "x"
+                    position += str(self.board[i,o])
                 else:
                     position += str(self.board[i,o])
         
@@ -552,8 +580,8 @@ class renderer():
         self.board = board
         self.display = pygame.display.set_mode((width, height))
 
-        self.black = {King: pygame.image.load("black_king.png"), Queen: pygame.image.load("black_queen.png"), Bishop: pygame.image.load("black_bishop.png"), Knight: pygame.image.load("black_knight.png"), Rook: pygame.image.load("black_rook.png"), Pawn: pygame.image.load("black_pawn.png")}
-        self.white = {King: pygame.image.load("white_king.png"), Queen: pygame.image.load("white_queen.png"), Bishop: pygame.image.load("white_bishop.png"), Knight: pygame.image.load("white_knight.png"), Rook: pygame.image.load("white_rook.png"), Pawn: pygame.image.load("white_pawn.png")}
+        self.black = {King: pygame.image.load("client/assets/black_king.png"), Queen: pygame.image.load("client/assets/black_queen.png"), Bishop: pygame.image.load("client/assets/black_bishop.png"), Knight: pygame.image.load("client/assets/black_knight.png"), Rook: pygame.image.load("client/assets/black_rook.png"), Pawn: pygame.image.load("client/assets/black_pawn.png")}
+        self.white = {King: pygame.image.load("client/assets/white_king.png"), Queen: pygame.image.load("client/assets/white_queen.png"), Bishop: pygame.image.load("client/assets/white_bishop.png"), Knight: pygame.image.load("client/assets/white_knight.png"), Rook: pygame.image.load("client/assets/white_rook.png"), Pawn: pygame.image.load("client/assets/white_pawn.png")}
 
         self.create_board()
 
@@ -942,45 +970,64 @@ while True:
     if len(board.moves) >= 200:
         break
 
-    print(board.halfmove_clock)
+    pygame.event.pump()
+    Renderer.display.fill((255, 255, 255))
+    Renderer.create_board()
+
+    for i in board.board:
+        for o in i:
+            if o.piece != None:
+                test_render_piece(Renderer, o.piece)
+
+    pygame.display.update()
+
+    ask = user[0] if board.to_move == "white" else user[1]
+
+    if ask:
+        while True:
+            moves = board.generate_legal_moves()
+            moves = [j for k in moves.values() for j in k]
+            if moves == []:
+                raise Exception
+            
+            for i in moves:
+                print(str(i))
+            move = input(f"Move for {board.to_move}: ").strip()        
+            match = [i for i in moves if str(i).lower() == move.lower()]
+            if match != []:
+                board.execute(match[0])
+                break
+    else:
+        moves = [j for i in board.generate_legal_moves().values() for j in i]
+        board.execute(random.choice(moves))
     
-    try:
-        pygame.event.pump()
-        Renderer.display.fill((255, 255, 255))
-        Renderer.create_board()
-
-        for i in board.board:
-            for o in i:
-                if o.piece != None:
-                    test_render_piece(Renderer, o.piece)
-
-        pygame.display.update()
-
-        ask = user[0] if board.to_move == "white" else user[1]
-
-        if ask:
-            while True:
-                moves = board.generate_legal_moves()
-                moves = [j for k in moves.values() for j in k]
-                if moves == []:
-                    raise Exception
-                
-                for i in moves:
-                    print(str(i))
-                move = input(f"Move for {board.to_move}: ").strip()        
-                match = [i for i in moves if str(i).lower() == move.lower()]
-                if match != []:
-                    board.execute(match[0])
-                    break
-        else:
-            moves = [j for i in board.generate_legal_moves().values() for j in i]
-            board.execute(random.choice(moves))
-
-    except Exception as e:
-        print(e)
+    print(str(board))
+    result = board.calc_result()
+    if result != "":
+        print(result)
         break
 
 print(len(board.moves))    
 print(board.as_pgn())
 print(str(board))
-                
+pos = str(board)
+fen_list = [pos[8*i:8*(i+1)] for i in range(8)]
+fen = ""
+
+for u in fen_list:
+    for i in range(len(u)):
+        if u[i] != ".":
+            fen += u[i]
+        else:
+            if i == 0 or u[i-1] != ".":
+                num = 1
+                for o in range(i+1, len(u)):
+                    if u[o] == ".":
+                        num += 1
+                    else:
+                        break
+                fen += str(num)
+    fen += "/"
+
+print(fen)
+              
