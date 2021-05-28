@@ -259,8 +259,8 @@ class Board():
         self.white = Side("white")
         self.black = Side("black")
         self.moves = [[]]
-        self.positions = [[]]
         self.epsquare = ()
+        self.positions = [[]]
         self.halfmove_clock = 0
         self.result = ""
         
@@ -300,6 +300,9 @@ class Board():
 
             if row == 8:
                 break
+        
+        self.positions = [[str(self)]] if self.to_move == "white" else [["", str(self)]]
+        self.calc_result()
 
     def update(self):
         if self.to_move == "white":
@@ -492,6 +495,10 @@ class Board():
         return [False]
 
     def execute(self, move):
+        move.execute()
+        self.to_move = "white" if self.to_move == "black" else "black"
+        self.update()
+
         if len(self.moves[-1]) == 2:
             self.moves.append([])           
         self.moves[-1].append(move.name)
@@ -505,14 +512,6 @@ class Board():
             if self.to_move == "black":
                 self.positions[-1].append("")
 
-        if len(self.positions[-1]) == 2:
-            self.positions.append([])        
-        self.positions[-1].append(str(self))
-
-        move.execute()
-        self.to_move = "white" if self.to_move == "black" else "black"
-        self.update()
-
         self.epsquare = ()
         if len(self.moves[-1][-1]) == 2 and (self.moves[-1][-1].endswith("4") or self.moves[-1][-1].endswith("5")):
             last = self.moves[-1][-1]
@@ -524,6 +523,10 @@ class Board():
 
             if not bool([i[0 if last_mover == "white" else 1] for i in self.moves if i[0 if last_mover == "white" else 1] == last[0]+str(3 if last_mover == "white" else 6)]):
                 self.epsquare = (names_rows.index(int(last[1])+(-1 if last_mover == "white" else 1)), names_columns.index(last[0]))
+        
+        if len(self.positions[-1]) == 2:
+            self.positions.append([])        
+        self.positions[-1].append(str(self))
     
     def calc_result(self):
         if self.result == "":
@@ -535,15 +538,50 @@ class Board():
                 else:
                     self.result = "[DRAW] [STALEMATE]"
             else:
+                white_p = ""
+                black_p = ""
+
+                if len(self.white.pieces) <= 3:
+                    white_p = "".join(["K"] + [i.symbol.upper() for i in self.white.pieces if not isinstance(i, King)])
+                
+                if len(self.black.pieces) <= 3:
+                    black_p = "".join(["K"] + [i.symbol.upper() for i in self.black.pieces if not isinstance(i, King)])
+                                
+                if (white_p == "KB" or white_p == "KN" or white_p == "K") and (black_p == "KB" or black_p == "KN" or black_p == "K"):
+                    self.result = "[DRAW] [INSUFFICIENT MATERIAL]"
+                    if white_p == "KB" and black_p == "KB":
+                        w_bishop = "white" if self.board[[i for i in self.white.pieces if not isinstance(i, King)][0].square].color == "white" else "black"
+                        b_bishop = "white" if self.board[[i for i in self.black.pieces if not isinstance(i, King)][0].square].color == "white" else "black"
+                        if w_bishop != b_bishop:
+                            self.result = ""                
+                
+                if (white_p == "KNN" and black_p == "K") or (white_p == "K" and black_p == "KNN"):
+                    self.result = "[DRAW] [INSUFFICIENT MATERIAL]"
+
                 if self.halfmove_clock == 100:
                     self.result = "[DRAW] [50 MOVE RULE]"
-                print(self.positions)
+
                 if self.positions != [[]]:
                     current_position = self.positions[-1][-1]
-                    position_color = 1 if self.to_move == "white" else 0
+                    position_color = 0 if self.to_move == "white" else 1
                     matching_positions = [i[position_color] for i in self.positions if i[position_color] == current_position]
                     if len(matching_positions) == 3:
                         self.result = "[DRAW] [3 FOLD REPETITION]"
+
+        return self.result
+    
+    def timeout(self, color):
+        opp = self.white if color == "black" else self.black
+        self.result = f"[{'WHITE' if opp == self.white else 'BLACK'}] [TIMEOUT]"
+        if len(opp.pieces) <= 3:
+            opp_p = "".join(["K"] + [i.symbol.upper() for i in opp.pieces if not isinstance(i, King)])
+            if opp_p in ["KB", "KN", "KNN", "K"]:
+                self.result = "[DRAW] [INSUFFICIENT MATERIAL vs TIMEOUT]"
+        
+        return self.result
+    
+    def resign(self):
+        self.result = f"[{'WHITE' if self.to_move == 'black' else 'BLACK'}] [RESIGNATION]"
 
         return self.result
 
@@ -960,16 +998,14 @@ def test_render_piece(renderer, piece):
 ##            pygame.draw.rect(renderer.display, (255, 0, 0), (i[1]*50, i[0]*50, 50, 50), 3)
         
 
-board = Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w")
+#board = Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w")
+board = Board(fen="8/3n4/5k2/4p3/8/6N1/4K3/8 w")
 Renderer = renderer(400, 400, board=board, colors=[(238,238,210), (118, 150, 56)])
 board.update()
 
 user = (True, True)
 
 while True:
-    if len(board.moves) >= 200:
-        break
-
     pygame.event.pump()
     Renderer.display.fill((255, 255, 255))
     Renderer.create_board()
@@ -980,6 +1016,11 @@ while True:
                 test_render_piece(Renderer, o.piece)
 
     pygame.display.update()
+
+    result = board.calc_result()
+    if result != "":
+        print(result)
+        break
 
     ask = user[0] if board.to_move == "white" else user[1]
 
@@ -992,7 +1033,16 @@ while True:
             
             for i in moves:
                 print(str(i))
-            move = input(f"Move for {board.to_move}: ").strip()        
+            move = input(f"Move for {board.to_move}: ").strip()
+
+            if move == "timeout":
+                board.timeout(board.to_move)
+                break
+
+            if move == "resign":
+                board.resign()
+                break
+
             match = [i for i in moves if str(i).lower() == move.lower()]
             if match != []:
                 board.execute(match[0])
@@ -1000,12 +1050,6 @@ while True:
     else:
         moves = [j for i in board.generate_legal_moves().values() for j in i]
         board.execute(random.choice(moves))
-    
-    print(str(board))
-    result = board.calc_result()
-    if result != "":
-        print(result)
-        break
 
 print(len(board.moves))    
 print(board.as_pgn())
@@ -1030,4 +1074,3 @@ for u in fen_list:
     fen += "/"
 
 print(fen)
-              
