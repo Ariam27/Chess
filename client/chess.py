@@ -1,10 +1,10 @@
 import numpy as np
-import pygame
 from copy import deepcopy as copy
 
 #test
 import random
 import time
+import pygame
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -29,12 +29,12 @@ class Move():
             to_move = self.board.white if self.board.to_move == "white" else self.board.black
             
             if isinstance(self.piece, Pawn):
-                if self.board.board[final_square].piece != None:
+                if self.board.board[self.final_square].piece != None:
                     self.name += names_columns[self.original_square[1]]
             else:
                 self.name += self.piece.symbol.upper()
 
-                pieces = [i for i in to_move.attacking[final_square] if isinstance(i, type(self.piece)) and not i == self.piece]
+                pieces = [i for i in to_move.attacking[self.final_square] if isinstance(i, type(self.piece)) and not i == self.piece]
                 file_ambi = ""
                 rank_ambi = ""
                 for i in pieces:
@@ -63,7 +63,11 @@ class Move():
             to_move = test_board.white if test_board.to_move == "white" else test_board.black
 
             if to_move.check:
-                self.name += "+"
+                result = test_board.calc_result()
+                if result != "" and result.split()[1].strip("[]") == "CHECKMATE":
+                    self.name += "#"
+                else:
+                    self.name += "+"
                     
     def execute(self):
         if self.board.board[self.final_square].piece != None:
@@ -103,7 +107,11 @@ class KingSideCastle():
             to_move = test_board.white if test_board.to_move == "white" else test_board.black
 
             if to_move.check:
-                self.name += "+"            
+                result = test_board.calc_result()
+                if result != "" and result.split()[1].strip("[]") == "CHECKMATE":
+                    self.name += "#"
+                else:
+                    self.name += "+"         
 
     def execute(self):
         self.board.board[self.rook.square].piece = None
@@ -140,7 +148,11 @@ class QueenSideCastle():
             to_move = test_board.white if test_board.to_move == "white" else test_board.black
 
             if to_move.check:
-                self.name += "+"  
+                result = test_board.calc_result()
+                if result != "" and result.split()[1].strip("[]") == "CHECKMATE":
+                    self.name += "#"
+                else:
+                    self.name += "+" 
 
     def execute(self):
         self.board.board[self.rook.square].piece = None
@@ -176,7 +188,11 @@ class Promotion(Move):
             to_move = test_board.white if test_board.to_move == "white" else test_board.black
 
             if to_move.check:
-                self.name += "+"            
+                result = test_board.calc_result()
+                if result != "" and result.split()[1].strip("[]") == "CHECKMATE":
+                    self.name += "#"
+                else:
+                    self.name += "+"            
         
 
     def execute(self):
@@ -216,7 +232,11 @@ class EnPassant(Move):
             to_move = test_board.white if test_board.to_move == "white" else test_board.black
 
             if to_move.check:
-                self.name += "+"
+                result = test_board.calc_result()
+                if result != "" and result.split()[1].strip("[]") == "CHECKMATE":
+                    self.name += "#"
+                else:
+                    self.name += "+"
 
     def execute(self):
         to_remove = self.board.white if self.board.board[(self.original_square[0], self.final_square[1])].piece.color == "white" else self.board.black
@@ -321,13 +341,12 @@ class Board():
                 if i.sliding:
                     o = [j for k in o for j in k]
 
+                    x = [j for k in i.xray for j in k]
+                    for u in x:
+                        check_attacking.xray[u].append(i)
+                    
                 for u in o:
-                    check_attacking.attacking[u].append(i)
-                        
-            if i.sliding:
-                o = [j for k in i.xray for j in k]
-                for u in o:
-                    check_attacking.xray[u].append(i)
+                    check_attacking.attacking[u].append(i)                
 
         king = [i for i in check.pieces if isinstance(i, King)][0]
         if check_attacking.attacking[king.square] != []:
@@ -363,45 +382,28 @@ class Board():
                         to_move.xray[u].append(i)
 
         if to_move.check:
-            print("check")
             king = [i for i in to_move.pieces if isinstance(i, King)][0]
             pieces_checking = opponent.attacking[king.square]
-            if len(pieces_checking) > 1:
-                print("more than 1 check")
-                for i in king.move:
-                    for o in pieces_checking:
-                        if o.sliding:
-                            series = [k for k in o.attacking if king.square in k][0]
-                            series = o.attacking.index(series)
-                            if i in o.xray[series]:
-                                break
-                    else:
-                        if opponent.attacking[i] == []:
-                            legal_moves.append(Move(king.square, i, king, self))
-            else:
-                for i in king.move:
-                    for o in pieces_checking:
-                        if o.sliding:
-                            series = [k for k in o.attacking if king.square in k][0]
-                            series = o.attacking.index(series)
-                            if i in o.xray[series]:
-                                break
-                    else:
-                        if opponent.attacking[i] == []:
-                            legal_moves.append(Move(king.square, i, king, self))
 
+            for i in king.move:
+                for o in pieces_checking:
+                    if o.sliding:
+                        series = [k for k in o.attacking if king.square in k][0]
+                        series = o.attacking.index(series)
+                        if i in o.xray[series]:
+                            break
+                else:
+                    if opponent.attacking[i] == []:
+                        legal_moves.append(Move(king.square, i, king, self))
+
+            if not len(pieces_checking) > 1:
                 if pieces_checking[0].sliding:
                     series = [i for i in pieces_checking[0].attacking if king.square in i][0]
                     series = series[:-1]
                     for i in to_move.pieces:
                         if not isinstance(i, King):
                             if not self.is_pinned(i, king)[0]:
-                                if i.sliding:
-                                    o = [j for k in i.move for j in k]
-                                else:
-                                    o = i.move
-
-                                for u in o:
+                                for u in i.move:
                                     if u in series:
                                         legal_moves.append(Move(i.square, u, i, self))
                                         
@@ -997,80 +999,80 @@ def test_render_piece(renderer, piece):
 ##        else:
 ##            pygame.draw.rect(renderer.display, (255, 0, 0), (i[1]*50, i[0]*50, 50, 50), 3)
         
+if __name__ == "__main__":
+    board = Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w")
+    #board = Board(fen="R3k1N1/1r6/4P3/2P2P1p/1P2bP1q/p1K1R1P1/P6N/B6B b")
+    Renderer = renderer(400, 400, board=board, colors=[(238,238,210), (118, 150, 56)])
+    board.update()
 
-#board = Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w")
-board = Board(fen="8/3n4/5k2/4p3/8/6N1/4K3/8 w")
-Renderer = renderer(400, 400, board=board, colors=[(238,238,210), (118, 150, 56)])
-board.update()
+    user = (False, False)
 
-user = (True, True)
+    while True:
+        pygame.event.pump()
+        Renderer.display.fill((255, 255, 255))
+        Renderer.create_board()
 
-while True:
-    pygame.event.pump()
-    Renderer.display.fill((255, 255, 255))
-    Renderer.create_board()
+        for i in board.board:
+            for o in i:
+                if o.piece != None:
+                    test_render_piece(Renderer, o.piece)
 
-    for i in board.board:
-        for o in i:
-            if o.piece != None:
-                test_render_piece(Renderer, o.piece)
+        pygame.display.update()
 
-    pygame.display.update()
+        result = board.calc_result()
+        if result != "":
+            print(result)
+            break
 
-    result = board.calc_result()
-    if result != "":
-        print(result)
-        break
+        ask = user[0] if board.to_move == "white" else user[1]
 
-    ask = user[0] if board.to_move == "white" else user[1]
+        if ask:
+            while True:
+                moves = board.generate_legal_moves()
+                moves = [j for k in moves.values() for j in k]
+                if moves == []:
+                    raise Exception
+                
+                for i in moves:
+                    print(str(i))
+                move = input(f"Move for {board.to_move}: ").strip()
 
-    if ask:
-        while True:
-            moves = board.generate_legal_moves()
-            moves = [j for k in moves.values() for j in k]
-            if moves == []:
-                raise Exception
-            
-            for i in moves:
-                print(str(i))
-            move = input(f"Move for {board.to_move}: ").strip()
+                if move == "timeout":
+                    board.timeout(board.to_move)
+                    break
 
-            if move == "timeout":
-                board.timeout(board.to_move)
-                break
+                if move == "resign":
+                    board.resign()
+                    break
 
-            if move == "resign":
-                board.resign()
-                break
-
-            match = [i for i in moves if str(i).lower() == move.lower()]
-            if match != []:
-                board.execute(match[0])
-                break
-    else:
-        moves = [j for i in board.generate_legal_moves().values() for j in i]
-        board.execute(random.choice(moves))
-
-print(len(board.moves))    
-print(board.as_pgn())
-print(str(board))
-pos = str(board)
-fen_list = [pos[8*i:8*(i+1)] for i in range(8)]
-fen = ""
-
-for u in fen_list:
-    for i in range(len(u)):
-        if u[i] != ".":
-            fen += u[i]
+                match = [i for i in moves if str(i).lower() == move.lower()]
+                if match != []:
+                    board.execute(match[0])
+                    break
         else:
-            if i == 0 or u[i-1] != ".":
-                num = 1
-                for o in range(i+1, len(u)):
-                    if u[o] == ".":
-                        num += 1
-                    else:
-                        break
-                fen += str(num)
-    fen += "/"
+            moves = [j for i in board.generate_legal_moves().values() for j in i]
+            board.execute(random.choice(moves))
 
-print(fen)
+    print(len(board.moves))    
+    print(board.as_pgn())
+    print(str(board))
+    pos = str(board)
+    fen_list = [pos[8*i:8*(i+1)] for i in range(8)]
+    fen = ""
+
+    for u in fen_list:
+        for i in range(len(u)):
+            if u[i] != ".":
+                fen += u[i]
+            else:
+                if i == 0 or u[i-1] != ".":
+                    num = 1
+                    for o in range(i+1, len(u)):
+                        if u[o] == ".":
+                            num += 1
+                        else:
+                            break
+                    fen += str(num)
+        fen += "/"
+
+    print(fen)
