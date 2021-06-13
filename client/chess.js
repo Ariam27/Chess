@@ -1,6 +1,8 @@
 var nj = require("numjs");
 var $ = require("lodash");
-const { thru } = require("lodash");
+
+const isUpperCase = (string) => /^[A-Z]*$/.test(string);
+const isLowerCase = (string) => /^[a-z]*$/.test(string);
 
 var names_rows = [8, 7, 6, 5, 4, 3, 2, 1];
 var names_columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -312,5 +314,115 @@ class Side {
         this.check = false;
         this.kingside_castle = true;
         this.queenside_castle = true;
+    };
+};
+
+class Board {
+    constructor(fen="8/8/8/8/8/8/8/8") {
+        this.board = np.zeros([8, 8]);
+        this.fen = fen;
+        this.to_move = (fen.split(" ")[1] === "w") ? "white" : "black";
+        this.pieces = {"p": Pawn, "b": Bishop, "n": Knight, "k": King, "q": Queen, "r": Rook};
+        this.white = new Side("white");
+        this.black = new Side("black");
+        this.moves = [[]];
+        this.epsquare = [];
+        this.positions = [[]];
+        this.halfmove_clock = 0;
+        this.result = "";
+
+        for (let i = 0; i < this.board.shape[0]; i++){
+            for (let o = 0; o < this.board.shape[1]; o++){
+                if ((i+o)%2 === 0) {
+                    this.board.set(i, o, new Square([i, o], "white"));
+                } else {
+                    this.board.set(i, o, new Square([i, o], "black"));
+                };
+            };
+        };
+
+        for (let i = 0; i < this.board.shape[0]; i++){
+            for (let o = 0; o < this.board.shape[1]; o++){
+                let square = this.board.get(i, o).square;
+                this.white.attacking[square] = [];
+                this.white.xray[square] = [];
+                this.black.attacking[square] = [];
+                this.black.xray[square] = [];
+            };
+        };
+
+        let row = 0;
+        let column = 0;
+
+        for (let i of this.fen.split(" ")[0].split("/")){
+            for (let o of i){
+                if (isNaN(o)) {
+                    if (o.toLowerCase in Object.keys(this.pieces)){
+                        this.board.get(row, column).piece = new this.pieces[o.toLowerCase()]([row, column], (isLowerCase(o)) ? "black" : "white", this);
+                        if (isLowerCase(o)){
+                            this.black.pieces.push(this.board.get(row, column).piece);
+                        } else {
+                            this.white.pieces.push(this.board.get(row, column).piece);
+                        };
+                    };
+                    column++;
+                } else if (! isNaN(o)) {
+                    column += parseInt(o);
+                };
+
+                if (column === 8) {
+                    break;
+                };
+            };
+
+            row++;
+            column = 0;
+
+            if (row === 8) {
+                break;
+            };
+        };
+
+        this.positions = (this.to_move === "white") ? [[String(this)]] : [["", String(this)]];
+        this.calc_result();
+    };
+
+    update() {
+        if (this.to_move === "white") {
+            let check_attacking = this.black;
+            let check = this.white;
+        } else if (this.to_move === "black") {
+            let check_attacking = this.white;
+            let check = this.black;
+        };
+
+        check_attacking.attacking = Object.fromEntries(Object.keys(check_attacking.attacking).map(x => [x, []]));
+        check_attacking.xray = $.cloneDeep(check_attacking.attacking);
+
+        for (let i of check_attacking.pieces) {
+            i.update();
+            if (! $.isEqual(i.attacking, [])) {
+                let o = i.attacking;
+                if (i.sliding) {
+                    o = [...(function*(){for (let k of o) for (let j of k) yield j;}())];
+                    x = [...(function*(){for (let k of i.xray) for (let j of k) yield j;}())];
+
+                    for (let u of x){
+                        check_attacking.xray[u].push(i);
+                    };
+                };
+
+                for (let u of o){
+                    check_attacking.attacking[u].push(i);
+                };
+            };
+        };
+
+        let king = check.pieces.filter(i => i instanceof King)[0];
+        if (! $.isEqual(check_attacking.attacking[king.square], [])){
+            check.check = true;
+        } else {
+            check.check = false;
+        };
     };
 };
