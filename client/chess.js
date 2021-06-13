@@ -425,4 +425,67 @@ class Board {
             check.check = false;
         };
     };
+
+    generate_legal_moves() {
+        let legal_moves = [];
+
+        if (this.to_move === "white"){
+            let to_move = this.white;
+            let opponent = this.black;
+        } else if (this.to_move === "black"){
+            let to_move = this.black;
+            let opponent = this.white;
+        };
+
+        to_move.attacking = Object.fromEntries(Object.keys(to_move.attacking).map(x => [x, []]));
+        to_move.xray = $.cloneDeep(to_move.attacking);
+        for (let i of to_moves.pieces){
+            i.update();
+            if (! $.isEqual(i.attacking, [])){
+                for (let o of i.attacking){
+                    if (i.sliding){
+                        for (let u of o){
+                            to_move.attacking[u].push(i);
+                        };
+                    } else {
+                        to_move.attacking[o].push(i);
+                    };
+                };
+            };
+
+            if (i.sliding){
+                for (let o of i.xray){
+                    for (let u of o){
+                        to_move.xray[u].push(i);
+                    };
+                };
+            };
+        };
+
+        if (to_move.check){
+            let king = to_move.pieces.filter(i => i instanceof King)[0];
+            let pieces_checking = opponent.attacking[king.square];
+
+            for (let i of king.move){
+                let legal = true;
+
+                for (let o of pieces_checking){
+                    if (o.sliding){
+                        let series = o.attacking.filter(k => king.square in k)[0];
+                        series = o.attacking.indexOf(series);
+                        if (i in o.xray[series]){
+                            legal = false;
+                            break;
+                        };
+                    };
+                };
+
+                if (legal){
+                    if ($.isEqual(opponent.attacking[i], [])){
+                        legal_moves.push(new Move(king.square, i, king, this));
+                    };
+                };
+            };
+        };
+    };
 };
