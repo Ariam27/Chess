@@ -3,6 +3,7 @@ var $ = require("lodash");
 
 const isUpperCase = (string) => /^[A-Z]*$/.test(string);
 const isLowerCase = (string) => /^[a-z]*$/.test(string);
+const isIn = (i, o) => o.some(row => $.isEqual(row, i));
 
 var names_rows = [8, 7, 6, 5, 4, 3, 2, 1];
 var names_columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -39,7 +40,7 @@ class Move {
                     let ambiguation = true;
                     if (this.board.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0])[0]){
                         let [_, pinner, series] = this.board.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0]);
-                        if (! this.final_square in [pinner.square, ...pinner.attacking[series].slice(0, -1), ...pinner.xray[series].slice(0, -1)]){
+                        if (! isIn(this.final_square, [pinner.square, ...pinner.attacking[series].slice(0, -1), ...pinner.xray[series].slice(0, -1)])){
                             ambiguation = false;
                         };
                     };
@@ -471,9 +472,9 @@ class Board {
 
                 for (let o of pieces_checking){
                     if (o.sliding){
-                        let series = o.attacking.filter(k => king.square in k)[0];
+                        let series = o.attacking.filter(k => isIn(king.square, k))[0];
                         series = o.attacking.indexOf(series);
-                        if (i in o.xray[series]){
+                        if (isIn(i, o.xray[series])){
                             legal = false;
                             break;
                         };
@@ -486,6 +487,140 @@ class Board {
                     };
                 };
             };
+
+            if (! pieces_checking.length > 1){
+                if (pieces_checking[0].sliding){
+                    series = pieces_checking[0].attacking.filter(i => isIn(king.square, i))[0];
+                    series = series.slice(0, -1);
+                    
+                    for (let i of to_move.pieces){
+                        if (! i instanceof King){
+                            if (! this.is_pinned(i, king)[0]){
+                                for (let u of i.move){
+                                    if (isIn(u, series)){
+                                        legal_moves.push(new Move(i.square, u, i, this));
+                                    };
+                                };
+                            };
+                        };
+                    };
+                };
+
+                for (let i of to_move.attacking[pieces_checking[0].square]){
+                    if (! this.is_pinned(i, king)[0] && ! i instanceof King){
+                        legal_moves.push(new Move(i.square, pieces_checking[0].square, i, this));
+                    };
+                };
+            };
+        } else {
+            for (let i of to_move.pieces){
+                if (this.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0])[0]){
+                    let [_, o, series] = this.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0]);
+                    
+                    for (let u of [o.square, ...o.attacking[series].slice(0, -1), ...o.xray[series].slice(0, -1)]){
+                        if (isIn(u, i.move)){
+                            legal_moves.push(new Move(i.square, u, i, this));
+                        };
+                    };
+
+                    if (i instanceof Pawn){
+                        if (isIn(o.square, i.attacking)){
+                            legal_moves.push(new Move(i.square, o.square, i, this));
+                        };
+                    };
+                } else {
+                    if (! i instanceof King){
+                        for (let o of i.move){
+                            legal_moves.push(new Move(i.square, o, i , this));
+                        };
+
+                        if (i instanceof Pawn){
+                            for (let o of i.attacking){
+                                if (this.board.get(...o).piece !== null){
+                                    if (this.board.get(...o).piece.color !== i.color){
+                                        legal_moves.push(new Move(i.square, o, i, this));
+                                    };
+                                };
+                            };
+                        };
+                    } else {
+                        for (let o of i.move){
+                            if ($.isEqual(opponent.attacking[o], [])){
+                                legal_moves.push(new Move(i.square, o, i, this));
+                            };
+                        };
+                    };
+                };
+            };
+            
+            let rank = (to_move === this.white) ? 7 : 0;
+            if (this.board.get(rank, 4).piece instanceof King && this.board.get(rank, 7).piece instanceof Rook){
+                if (to_move.kingside_castle && $.isEqual(opponent.attacking[[rank, 5]], []) && $.isEqual(opponent.attacking[[rank, 6]], []) && this.board.get(rank, 5).piece === null && this.board.get(rank, 6).piece === null){
+                    legal_moves.push(new KingSideCastle(this));
+                };
+            };
+
+            if (this.board.get(rank, 4).piece instanceof King && this.board.get(rank, 0).piece instanceof Rook){
+                if (this.to_move.queenside_castle && $.isEqual(opponent.attacking[[rank, 2]], []) && $.isEqual(opponent.attacking[[rank, 3]], []) && this.board.get(rank, 1).piece === null && this.board.get(rank, 2).piece === null && this.board.get(rank, 3).piece === null){
+                    legal_moves.push(new QueenSideCastle(this));
+                };
+            };
         };
+
+        if (! $.isEqual(this.epsquare, [])){
+            let row = this.epsquare[0] + ((this.to_move === "white") ? 1 : -1);
+
+            for (let i of [1, -1]){
+                if (square_exists(this, [row, this.epsquare[1]+i])){
+                    if (this.board.get(row, this.epsquare[1]+i).piece instanceof Pawn && this.board.get(row, this.epsquare[1]+i).piece.color === this.to_move){
+                        let test_board = $.cloneDeep(this);
+                        let test_move = new EnPassant([row, this.eqsquare[1]+i], this.epsquare, test_board.board.get(row, this.epsquare[1]+i).piece, test_board, true);
+                        test_board.execute(test_move);
+                        test_board.to_move = (test_board.to_move === "white") ? "black" : "white";
+                        test_board.update();
+
+                        let check = (test_board.to_move === "white") ? test_board.white : test_board.black;
+                        
+                        if (! check.check){
+                            legal_moves.push(new EnPassant([row, this.epsquare[1]+i], this.epsquare, this.board.get(row, this.epsquare[1]+i).piece, this));
+                        };
+                    };
+                };
+            };
+        };
+
+        let to_delete = [];
+        for (let i of legal_moves){
+            if (! (i instanceof KingSideCastle || i instanceof QueenSideCastle || i instanceof Promotion || i instanceof EnPassant)){
+                if (i.piece instanceof Pawn){
+                    let r = (i.piece.color === "white") ? 0 : 7;
+                    if (i.final_square[0] === r){
+                        for (let u of [Knight, Bishop, Rook, Queen]){
+                            legal_moves.push(new Promotion(i.original_square, i.final_square, i.piece, i.board, u));
+                        };
+                        to_delete.push(legal_moves.indexOf(i));
+                    };
+                };
+            };
+        };
+
+        let copy_legal_moves = [];
+        if (! $.isEqual(to_delete, [])){
+            for (let i; i < legal_moves.length; i++){
+                if (! i in to_delete){
+                    copy_legal_moves.push(legal_moves[i]);
+                };
+            };
+        };
+        legal_moves = copy_legal_moves;
+
+        let legal_moves_array;
+        [legal_moves, legal_moves_array] = [Object.fromEntries(to_move.pieces.map(x => [x, []])), legal_moves];
+
+        for (let i of legal_moves_array){
+            legal_moves[(i instanceof KingSideCastle || i instanceof QueenSideCastle) ? to_move.pieces.filter(o => o instanceof King)[0] : i.piece].push(i);
+        };
+
+        return legal_moves;
     };
 };
