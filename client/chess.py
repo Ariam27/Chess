@@ -479,10 +479,7 @@ class Board():
         
 
     def is_pinned(self, piece, pinned_to):
-        if piece.color == "white":
-            attacker = self.black
-        elif piece.color == "black":
-            attacker = self.white
+        attacker = self.white if piece.color == "black" else self.black
 
         for i in attacker.attacking[piece.square]:
             if i.sliding:
@@ -552,8 +549,8 @@ class Board():
                 if (white_p == "KB" or white_p == "KN" or white_p == "K") and (black_p == "KB" or black_p == "KN" or black_p == "K"):
                     self.result = "[DRAW] [INSUFFICIENT MATERIAL]"
                     if white_p == "KB" and black_p == "KB":
-                        w_bishop = "white" if self.board[[i for i in self.white.pieces if not isinstance(i, King)][0].square].color == "white" else "black"
-                        b_bishop = "white" if self.board[[i for i in self.black.pieces if not isinstance(i, King)][0].square].color == "white" else "black"
+                        w_bishop = "white" if [i for i in self.white.pieces if not isinstance(i, King)][0].color == "white" else "black"
+                        b_bishop = "white" if [i for i in self.black.pieces if not isinstance(i, King)][0].color == "white" else "black"
                         if w_bishop != b_bishop:
                             self.result = ""                
                 

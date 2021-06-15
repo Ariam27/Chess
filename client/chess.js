@@ -623,4 +623,128 @@ class Board {
 
         return legal_moves;
     };
+
+    is_pinned(piece, pinned_to){
+        let attacker = (piece.color === "black") ? this.white : this.black;
+
+        for (let i of attacker.attacking[piece.square]){
+            if (i.sliding){
+                let series = null;
+                for (let o; o < i.attacking.length; o++){
+                    if (isIn(piece.square, i.attacking[o])){
+                        series = o;
+                    };
+
+                    if (series !== null){
+                        if (isIn(pinned_to.square, i.xray[series])){
+                            return [true, i, series];
+                        };
+                    };
+                };
+            };
+        };
+
+        return [false];
+    };
+
+    execute(move){
+        move.execute();
+        this.to_move = (this.to_move === "black") ? "white" : "black";
+        this.update();
+
+        if (this.moves.slice(-1)[0].length === 2){
+            this.moves.push([]);
+        };
+        this.moves[this.moves.length-1].push(move.name);
+
+        this.halfmove_clock++;
+        if (move.piece instanceof Pawn || move.name.includes("x")){
+            this.halfmove_clock = 0;
+        };
+
+        if (this.halfmove_clock === 0 || move instanceof KingSideCastle || move instanceof QueenSideCastle){
+            this.positions = [[]];
+            if (this.to_move === "black"){
+                this.positions[this.positions.length-1].push("");
+            };
+        };
+
+        this.epsquare = [];
+        if (this.moves.slice(-1)[0].slice(-1)[0].length === 2 && (this.moves.slice(-1)[0].slice(-1)[0].endsWith("4") || this.moves.slice(-1)[0].slice(-1)[0].endsWith("5"))){
+            let last = this.moves.slice(-1)[0].slice(-1)[0];
+
+            if (this.moves.slice(-1)[0].length === 1){
+                let last_mover = "white";
+            } else if (this.moves.slice(-1)[0].length === 2){
+                let last_mover = "black";
+            };
+
+            if ($.isEqual([], this.moves.filter(i => i[(last_mover === "white")?0:1] === last[0]+String((last_mover === "white")?3:6)).map(i => i[(last_mover === "white")?0:1]))){
+                this.epsquare = [names_rows.indexOf(parseInt(last[1])+((last_mover === "white")?-1:1)), names_columns.indexOf(last[0])];
+            };
+        };
+
+        if (this.positions.slice(-1)[0].length === 2){
+            this.positions.push([]);
+        };
+        this.positions.slice(-1)[0].push(String(this));
+    };
+
+    calc_result(){
+        if (this.result === ""){
+            let legal_moves = [...(function*(){for (let k of Object.values(this.generate_legal_moves())) for (let j of k) yield j;}())];
+            if ($.isEqual(legal_moves, [])){
+                let to_move = (this.to_move === "white") ? this.white : this.black;
+                if (to_move.check){
+                    this.result = `[${(this.to_move === "black") ? "WHITE" : "BLACK"}] [CHECKMATE]`;
+                } else {
+                    this.result = "[DRAW] [STALEMATE]";
+                };
+            } else {
+                let white_p = "";
+                let black_p = "";
+
+                if (this.white.pieces.length <= 3){
+                    white_p = ["K", ...this.white.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+                };
+
+                if (this.black.pieces.length <= 3){
+                    black_p = ["K", ...this.black.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+                };
+
+                if ((white_p === "KB" || white_p === "KN" || white_p === "K") && (black_p === "KB" || black_p === "KN" || black_p === "K")){
+                    this.result = "[DRAW] [INSUFFICIENT MATERIAL]";
+                    if (white_p === "KB" && black_p === "KB"){
+                        let w_bishop = (this.white.pieces.filter(i => ! i instanceof King)[0].color === "white") ? "white" : "black";
+                        let b_bishop = (this.black.pieces.filter(i => ! i instanceof King)[0].color === "white") ? "white" : "black";
+
+                        if (w_bishop !== b_bishop){
+                            this.result = "";
+                        };
+                    };
+                };
+
+                if ((white_p === "KNN" && black_p === "K") || (white_p === "K" && black_p === "KNN")){
+                    this.result = "[DRAW] [INSUFFICIENT MATERIAL]";
+                };
+
+                if (this.halfmove_clock === 100){
+                    this.result = "[DRAW] [50 MOVE RULE]";
+                };
+
+                if (! $.isEqual(this.positions, [[]])){
+                    let current_position = this.positions.slice(-1)[0].slice(-1)[0];
+                    let position_color = (this.to_move === "white") ? 0 : 1;
+                    let matching_positions = this.positions.filter(i => i[position_color] === current_position).map(i => i[position_color]);
+                    
+                    if (matching_positions.length === 3){
+                        this.result = "[DRAW] [3 FOLD REPETITION]";
+                    };
+
+                };
+            };
+        };
+
+        return this.result;
+    };
 };
