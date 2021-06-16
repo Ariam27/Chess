@@ -765,4 +765,36 @@ class Board {
         this.result = `[${(this.to_move === "black") ? "WHITE" : "BLACK"}] [RESIGNATION]`;
         return this.result;
     };
+
+    as_pgn(){
+        let pgn = "";
+        
+        for (let i; i < this.moves.length; i++){
+            pgn += `${i+1}. ${this.moves[i][0]} ${(this.moves[i].length === 2) ? this.moves[i][1] : ""} `;
+        };
+
+        return pgn;
+    };
+
+    toString(){
+        let position = "";
+
+        for (let i; i < this.board.shape[0]; i++){
+            for (let o; o < this.board.shape[1]; o++){
+                if ($.isEqual([i, o], this.epsquare)){
+                    //position += "x";
+                    position += String(this.board.get(i, o));
+                } else {
+                    position += String(this.board.get(i, o));
+                };
+            };
+        };
+
+        position += (this.white.kingside_castle) ? "K" : "";
+        position += (this.white.queenside_castle) ? "Q" : "";
+        position += (this.black.kingside_castle) ? "k" : "";
+        position += (this.black.queenside_castle) ? "q" : "";
+
+        return position;
+    };
 };
