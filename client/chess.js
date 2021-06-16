@@ -715,8 +715,8 @@ class Board {
                 if ((white_p === "KB" || white_p === "KN" || white_p === "K") && (black_p === "KB" || black_p === "KN" || black_p === "K")){
                     this.result = "[DRAW] [INSUFFICIENT MATERIAL]";
                     if (white_p === "KB" && black_p === "KB"){
-                        let w_bishop = (this.white.pieces.filter(i => ! i instanceof King)[0].color === "white") ? "white" : "black";
-                        let b_bishop = (this.black.pieces.filter(i => ! i instanceof King)[0].color === "white") ? "white" : "black";
+                        let w_bishop = this.board.get(...this.white.pieces.filter(i => ! i instanceof King)[0].square).color; 
+                        let b_bishop = this.board.get(...this.black.pieces.filter(i => ! i instanceof King)[0].square).color; 
 
                         if (w_bishop !== b_bishop){
                             this.result = "";
