@@ -1050,3 +1050,254 @@ class Queen extends Piece {
         this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
     };
 };
+
+class Rook extends Piece {
+    constructor(square, color, board) {
+        super(square, color, board, (color === "black") ? "r" : "R", true);
+        this.update();
+    };
+
+    update() {
+        this.attacking = $.range(4).map(i => []);
+        this.xray = $.range(4).map(i => []);
+        this.move = [];
+
+        let sqr;
+
+        for (let i of $.range(this.square[0]+1, this.board.board.shape[0])){
+            sqr = this.board.board.get(i, this.square[1]);
+
+            if (sqr.piece !== null) {
+                this.attacking[0].push(sqr.square);
+                if (sqr.piece.color !== this.color) {
+                    for (let o of $.range(sqr.square[0]+1, this.board.board.shape[0])) {
+                        sqr = this.board.board.get(o, this.square[1]);
+                        this.xray[0].push(sqr.square);
+                        if (sqr.piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[0].push(sqr.square);
+            };
+        };
+
+        if (this.square[0] !== 0) {
+            for (let i of $.range(this.square[0]-1, -1, -1)){
+                sqr = this.board.board.get(i, this.square[1]);
+
+                if (sqr.piece !== null) {
+                    this.attacking[1].push(sqr.square);
+                    if (sqr.piece.color !== this.color) {
+                        for (let o of $.range(sqr.square[0]-1, -1, -1)){
+                            sqr = this.board.board.get(o, this.square[1]);
+                            this.xray[1].push(sqr.square);
+                            if (sqr.piece !== null) {
+                                break;
+                            };
+                        };
+                    };
+                    break;
+                } else {
+                    this.attacking[1].push(sqr.square);
+                };
+            };
+        };
+
+        for (let i of $.range(this.square[1]+1, this.board.board.shape[1])){
+            sqr = this.board.board.get(this.square[0], i);
+
+            if (sqr.piece !== null) {
+                this.attacking[2].push(sqr.square);
+                if (sqr.piece.color !== this.color) {
+                    for (let o of $.range(sqr.square[1]+1, this.board.board.shape[1])){
+                        sqr = this.board.board.get(this.square[0], o);
+                        this.xray[2].push(sqr.square);
+                        if (sqr.piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[2].push(sqr.square);
+            };
+        };
+
+        if (this.square[1] !== 0) {
+            for (let i of $.range(this.square[1]-1, -1, -1)){
+                sqr = this.board.board.get(this.square[0], i);
+
+                if (sqr.piece !== null) {
+                    this.attacking[3].push(sqr.square);
+                    if (sqr.piece.color !== this.color) {
+                        for (let o of $.range(sqr.square[1]-1, -1, -1)){
+                            sqr = this.board.board.get(this.square[0], o);
+                            this.xray[3].push(sqr.square);
+                            if (sqr.piece !== null) {
+                                break;
+                            };
+                        };
+                    };
+                    break;
+                } else {
+                    this.attacking[3].push(sqr.square);
+                };
+            };
+        };
+        
+        this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
+    };
+};
+
+class Bishop extends Piece {
+    contructor(square, color, board) {
+        super(square, color, board, (color === "black") ? "b" : "B", true);
+        this.update();
+    };
+
+    update() {
+        this.attacking = $.range(4).map(i => []);
+        this.xray = $.range(4).map(i => []);
+        this.move = [];
+
+        let sqr;
+
+        for (let i of $.range(1, min(this.square[0]-0, this.board.board.shape[1]-1-this.square[1])+1)){
+            if (this.board.board.get(this.square[0]-i, this.square[1]+i).piece !== null) {
+                this.attacking[0].push(this.board.board.get(this.square[0]-i, this.square[1]+i).square);
+                if (this.board.board.get(this.square[0]-i, this.square[1]+i).piece.color !== this.color) {
+                    for (let o of $.range(i+1, min(this.square[0]-0, this.board.board.shape[1]-1-this.square[1])+1)){
+                        this.xray[0].push(this.board.board.get(this.square[0]-o, this.square[1]+o).square);
+                        if (this.board.board.get(this.square[0]-o, this.square[1]+o).piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[0].push(this.board.board.get(this.square[0]-i, this.square[1]+i).square);
+            };
+        };
+
+        for (let i of $.range(1, min(this.board.board.shape[0]-1-this.square[0], this.board.board.shape[1]-1-this.square[1])+1)){
+            if (this.board.board.get(this.square[0]+i, this.square[1]+i).piece !== null) {
+                this.attacking[1].push(this.board.board.get(this.square[0]+i, this.square[1]+i).square);
+                if (this.board.board.get(this.square[0]+i, this.square[1]+i).piece.color !== this.color) {
+                    for (let o of $.range(i+1, min(this.board.board.shape[0]-1-this.square[0], this.board.board.shape[1]-1-this.square[1])+1)){
+                        this.xray[1].push(this.board.board.get(this.square[0]+o, this.square[1]+o).square);
+                        if (this.board.board.get(this.square[0]+o, this.square[1]+o).piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[1].push(this.board.board.get(this.square[0]+i, this.square[1]+i).square);
+            };
+        };
+
+        for (let i of $.range(1, min(this.board.board.shape[0]-1-this.square[0], this.square[1]-0)+1)){
+            if (this.board.board.get(this.square[0]+i, this.square[1]-i).piece !== null) {
+                this.attacking[2].push(this.board.board.get(this.square[0]+i, this.square[1]-i).square);
+                if (this.board.board.get(this.square[0]+i, this.square[1]-i).piece.color !== this.color) {
+                    for (let o of $.range(i+1, min(this.board.board.shape[0]-1-this.square[0], this.square[1]-0)+1)){
+                        this.xray[2].push(this.board.board.get(this.square[0]+o, this.square[1]-o).square);
+                        if (this.board.board.get(this.square[0]+o, this.square[1]-o).piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[2].push(this.board.board.get(this.square[0]+i, this.square[1]-i).square);
+            };
+        };
+
+        for (let i of $.range(1, min(this.square[0]-0, this.square[1]-0)+1)){
+            if (this.board.board.get(this.square[0]-i, this.square[1]-i).piece !== null) {
+                this.attacking[3].push(this.board.board.get(this.square[0]-i, this.square[1]-i).square);
+                if (this.board.board.get(this.square[0]-i, this.square[1]-i).piece.color !== this.color) {
+                    for (let o of $.range(i+1, min(this.square[0]-0, this.square[1]-0)+1)){
+                        this.xray[3].push(this.board.board.get(this.square[0]-o, this.square[1]-o).square);
+                        if (this.board.board.get(this.square[0]-o, this.square[1]-o).piece !== null) {
+                            break;
+                        };
+                    };
+                };
+                break;
+            } else {
+                this.attacking[3].push(this.board.board.get(this.square[0]-i, this.square[1]-i).square);
+            };
+        };
+
+        this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
+    };
+};
+
+class Pawn extends Piece {
+    contructor(square, color, board) {
+        super(square, color, board, (color === "black") ? "p" : "P", false);
+
+        if (this.color === "black") {
+            this.vectors = [[1,0], [2,0]];
+        } else if (this.color === "white") {
+            this.vectors = [[-1,0], [-2,0]];
+        };
+
+        this.original_square = this.square;
+
+        this.update();
+    };
+
+    update() {
+        this.attacking = [];
+        this.move = [];
+
+        if (square_exists(this.board, nj.add(this.square, this.vectors[0]).tolist())) {
+            if (this.board.board.get(...nj.add(this.square, this.vectors[0]).tolist()).piece === null) {
+                this.move.push(nj.add(this.square, this.vectors[0]).tolist());
+                if (this.square[0] === this.original_square[0] && this.board.board.get(...nj.add(this.square, this.vectors[1]).tolist()).piece === null) {
+                    this.move.push(nj.add(this.square, this.vectors[1]).tolist());
+                };
+            };
+        };
+
+        if (this.color === "black") {
+            let vertical_offset = 1;
+        } else if (this.color === "white") {
+            let vertical_offset = -1;
+        };
+
+        for (let i of [-1, 1]) {
+            if (square_exists(this.board, [this.square[0]+vertical_offset, this.square[1]+i])) {
+                this.attacking.push([this.square[0]+vertical_offset, this.square[1]+i]);
+            };
+        };
+    };
+};
+
+class King extends Piece {
+    contructor(square, color, board) {
+        super(square, color, board, (color === "black") ? "k" : "K", false);
+        this.update();
+    };
+
+    update() {
+        this.attacking = [];
+        this.move = [];
+
+        for (let i of [-1, 0, 1]) {
+            for (let o of [-1, 0, 1]) {
+                if (square_exists(this.board, [this.square[0]+i, this.square[1]+o]) && ! (i === 0 && o === 0)) {
+                    this.attacking.push([this.square[0]+i, this.square[1]+o]);
+                };
+            };
+        };
+
+        this.move = this.attacking.filter(i => this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color);
+    };
+};
+
