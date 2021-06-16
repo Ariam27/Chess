@@ -11,7 +11,7 @@ const max = Math.max;
 var names_rows = [8, 7, 6, 5, 4, 3, 2, 1];
 var names_columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
-function square_exists(board, square){
+function square_exists(board, square, pawn=false){
     if (square[0] >= 0 && square[0] < board.board.shape[0] && square[1] >= 0 && square[1] < board.board.shape[1]){
         return true;
     };
@@ -31,7 +31,7 @@ class Move {
 
             if (this.piece instanceof Pawn){
                 if (this.board.board.get(...this.final_square).piece !== null){
-                    this.name += names_columns[self.original_square[1]];
+                    this.name += names_columns[this.original_square[1]];
                 };
             } else {
                 this.name += this.piece.symbol.toUpperCase();
@@ -52,7 +52,7 @@ class Move {
                         if (i.square[1] === this.piece.square[1]){
                             rank_ambi = String(names_row[this.piece.square[0]]);
                         } else {
-                            file_ambi = String(names_columns[self.piece.square[1]]);
+                            file_ambi = String(names_columns[this.piece.square[1]]);
                         };
                     };
                 };
@@ -63,7 +63,7 @@ class Move {
                 this.name += "x";
             };
 
-            this.name += names_columns[this.final_square[1]] + String(names_rows[self.final_square[0]]);
+            this.name += names_columns[this.final_square[1]] + String(names_rows[this.final_square[0]]);
             
             let test_board = $.cloneDeep(this.board);
             let test_move = new Move(this.original_square, this.final_square, test_board.board.get(...this.original_square).piece, test_board, true);
@@ -312,7 +312,7 @@ class Square {
 class Side {
     constructor(color) {
         this.color = color;
-        this.piece = [];
+        this.pieces = [];
         this.attacking = {};
         this.xray = {};
         this.check = false;
@@ -323,7 +323,7 @@ class Side {
 
 class Board {
     constructor(fen="8/8/8/8/8/8/8/8") {
-        this.board = np.zeros([8, 8]);
+        this.board = nj.zeros([8, 8]);
         this.fen = fen;
         this.to_move = (fen.split(" ")[1] === "w") ? "white" : "black";
         this.pieces = {"p": Pawn, "b": Bishop, "n": Knight, "k": King, "q": Queen, "r": Rook};
@@ -361,7 +361,7 @@ class Board {
         for (let i of this.fen.split(" ")[0].split("/")){
             for (let o of i){
                 if (isNaN(o)) {
-                    if (o.toLowerCase in Object.keys(this.pieces)){
+                    if (isIn(o.toLowerCase(), Object.keys(this.pieces))){
                         this.board.get(row, column).piece = new this.pieces[o.toLowerCase()]([row, column], (isLowerCase(o)) ? "black" : "white", this);
                         if (isLowerCase(o)){
                             this.black.pieces.push(this.board.get(row, column).piece);
@@ -392,12 +392,15 @@ class Board {
     };
 
     update() {
+        let check_attacking;
+        let check;
+
         if (this.to_move === "white") {
-            let check_attacking = this.black;
-            let check = this.white;
+            check_attacking = this.black;
+            check = this.white;
         } else if (this.to_move === "black") {
-            let check_attacking = this.white;
-            let check = this.black;
+            check_attacking = this.white;
+            check = this.black;
         };
 
         check_attacking.attacking = Object.fromEntries(Object.keys(check_attacking.attacking).map(x => [x, []]));
@@ -432,18 +435,20 @@ class Board {
 
     generate_legal_moves() {
         let legal_moves = [];
+        let to_move;
+        let opponent;
 
         if (this.to_move === "white"){
-            let to_move = this.white;
-            let opponent = this.black;
+            to_move = this.white;
+            opponent = this.black;
         } else if (this.to_move === "black"){
-            let to_move = this.black;
-            let opponent = this.white;
+            to_move = this.black;
+            opponent = this.white;
         };
 
         to_move.attacking = Object.fromEntries(Object.keys(to_move.attacking).map(x => [x, []]));
         to_move.xray = $.cloneDeep(to_move.attacking);
-        for (let i of to_moves.pieces){
+        for (let i of to_move.pieces){
             i.update();
             if (! $.isEqual(i.attacking, [])){
                 for (let o of i.attacking){
@@ -695,7 +700,8 @@ class Board {
 
     calc_result(){
         if (this.result === ""){
-            let legal_moves = [...(function*(){for (let k of Object.values(this.generate_legal_moves())) for (let j of k) yield j;}())];
+            let legal_moves = this.generate_legal_moves();
+            legal_moves = [...(function*(){for (let k of Object.values(legal_moves)) for (let j of k) yield j;}())];
             if ($.isEqual(legal_moves, [])){
                 let to_move = (this.to_move === "white") ? this.white : this.black;
                 if (to_move.check){
@@ -1047,7 +1053,8 @@ class Queen extends Piece {
             };
         };
 
-        this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
+        let self = this;
+        this.move = [...(function*(){for (let o of self.attacking) for (let i of o) if (self.board.board.get(...i).piece === null || self.board.board.get(...i).piece.color !== self.color) yield i;}())];
     };
 };
 
@@ -1147,13 +1154,14 @@ class Rook extends Piece {
                 };
             };
         };
-        
-        this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
+
+        let self = this;
+        this.move = [...(function*(){for (let o of self.attacking) for (let i of o) if (self.board.board.get(...i).piece === null || self.board.board.get(...i).piece.color !== self.color) yield i;}())];
     };
 };
 
 class Bishop extends Piece {
-    contructor(square, color, board) {
+    constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "b" : "B", true);
         this.update();
     };
@@ -1233,12 +1241,13 @@ class Bishop extends Piece {
             };
         };
 
-        this.move = [...(function*(){for (let o of this.attacking) for (let i of o) if (this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color) yield i;}())];
+        let self = this;
+        this.move = [...(function*(){for (let o of self.attacking) for (let i of o) if (self.board.board.get(...i).piece === null || self.board.board.get(...i).piece.color !== self.color) yield i;}())];
     };
 };
 
 class Pawn extends Piece {
-    contructor(square, color, board) {
+    constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "p" : "P", false);
 
         if (this.color === "black") {
@@ -1255,7 +1264,8 @@ class Pawn extends Piece {
     update() {
         this.attacking = [];
         this.move = [];
-
+        let vertical_offset;
+        
         if (square_exists(this.board, nj.add(this.square, this.vectors[0]).tolist())) {
             if (this.board.board.get(...nj.add(this.square, this.vectors[0]).tolist()).piece === null) {
                 this.move.push(nj.add(this.square, this.vectors[0]).tolist());
@@ -1266,9 +1276,9 @@ class Pawn extends Piece {
         };
 
         if (this.color === "black") {
-            let vertical_offset = 1;
+            vertical_offset = 1;
         } else if (this.color === "white") {
-            let vertical_offset = -1;
+            vertical_offset = -1;
         };
 
         for (let i of [-1, 1]) {
@@ -1280,7 +1290,7 @@ class Pawn extends Piece {
 };
 
 class King extends Piece {
-    contructor(square, color, board) {
+    constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "k" : "K", false);
         this.update();
     };
@@ -1301,3 +1311,4 @@ class King extends Piece {
     };
 };
 
+new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
