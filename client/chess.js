@@ -747,4 +747,22 @@ class Board {
 
         return this.result;
     };
+
+    timeout(color){
+        let opp = (color === "black") ? this.white : this.black;
+        this.result = `[${(opp === this.white) ? "WHITE" : "BLACK"}] [TIMEOUT]`;
+        if (opp.pieces.length <= 3){
+            let opp_p = ["K", ...opp.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+            if (opp_p in ["KB", "KN", "KNN", "K"]){
+                this.result = "[DRAW] [INSUFFICIENT MATERIAL vs TIMEOUT]";
+            };
+        };
+
+        return this.result;
+    };
+
+    resign(){
+        this.result = `[${(this.to_move === "black") ? "WHITE" : "BLACK"}] [RESIGNATION]`;
+        return this.result;
+    };
 };
