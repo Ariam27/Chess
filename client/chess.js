@@ -36,14 +36,14 @@ class Move {
             } else {
                 this.name += this.piece.symbol.toUpperCase();
                 
-                let pieces = to_move.attacking[this.final_square].filter(i => i instanceof this.piece.constructor && ! i === this.piece)
+                let pieces = to_move.attacking[this.final_square].filter(i => i instanceof this.piece.constructor && ! (i === this.piece))
                 let file_ambi = "";
                 let rank_ambi = "";
                 for (let i of pieces){
                     let ambiguation = true;
                     if (this.board.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0])[0]){
                         let [_, pinner, series] = this.board.is_pinned(i, to_move.pieces.filter(o => o instanceof King)[0]);
-                        if (! isIn(this.final_square, [pinner.square, ...pinner.attacking[series].slice(0, -1), ...pinner.xray[series].slice(0, -1)])){
+                        if (! (isIn(this.final_square, [pinner.square, ...pinner.attacking[series].slice(0, -1), ...pinner.xray[series].slice(0, -1)]))){
                             ambiguation = false;
                         };
                     };
@@ -59,13 +59,14 @@ class Move {
                 this.name += file_ambi + rank_ambi;
             };
 
-            if (! this.board.board.get(...this.final_square).piece === null){
+            if (this.board.board.get(...this.final_square).piece !== null){
                 this.name += "x";
             };
 
             this.name += names_columns[this.final_square[1]] + String(names_rows[this.final_square[0]]);
             
             let test_board = $.cloneDeep(this.board);
+            test_board.board.shape = this.board.board.shape;
             let test_move = new Move(this.original_square, this.final_square, test_board.board.get(...this.original_square).piece, test_board, true);
             test_board.execute(test_move);
 
@@ -73,7 +74,7 @@ class Move {
 
             if (to_move.check){
                 let result = test_board.calc_result();
-                if (! result === "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
+                if (result !== "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
                     this.name += "#";
                 } else {
                     this.name += "+";
@@ -83,7 +84,7 @@ class Move {
     };
 
     execute() {
-        if (! this.board.board.get(...this.final_square).piece === null){
+        if (this.board.board.get(...this.final_square).piece !== null){
             let to_remove = (this.board.board.get(...this.final_square).piece.color === "white") ? this.board.white : this.board.black;
             to_remove.pieces.splice(to_remove.pieces.indexOf(this.board.board.get(...this.final_square).piece), 1);
             this.board.board.get(...this.final_square).piece = null;
@@ -120,6 +121,7 @@ class KingSideCastle {
 
         if (! test) {
             let test_board = $.cloneDeep(this.board);
+            test_board.board.shape = this.board.board.shape;
             let test_move = new KingSideCastle(test_board, true);
             test_board.execute(test_move);
 
@@ -127,7 +129,7 @@ class KingSideCastle {
             
             if (to_move.check) {
                 let result = test_board.calc_result();
-                if (! result === "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
+                if (result !== "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
                     this.name += "#";
                 } else {
                     this.name += "+";
@@ -168,6 +170,7 @@ class QueenSideCastle {
 
         if (! test) {
             let test_board = $.cloneDeep(this.board);
+            test_board.board.shape = this.board.board.shape;
             let test_move = new QueenSideCastle(test_board, true);
             test_board.execute(test_move);
 
@@ -175,7 +178,7 @@ class QueenSideCastle {
             
             if (to_move.check) {
                 let result = test_board.calc_result();
-                if (! result === "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
+                if (result !== "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
                     this.name += "#";
                 } else {
                     this.name += "+";
@@ -215,6 +218,7 @@ class Promotion extends Move {
             this.name += "=" + symbols[this.promote_to];
 
             let test_board = $.cloneDeep(this.board);
+            test_board.board.shape = this.board.board.shape;
             let test_move = new Promotion(this.original_square, this.final_square, test_board.board.get(...this.original_square).piece, test_board, this.promote_to, true);
             test_board.execute(test_move);
 
@@ -222,7 +226,7 @@ class Promotion extends Move {
             
             if (to_move.check) {
                 let result = test_board.calc_result();
-                if (! result === "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
+                if (result !== "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
                     this.name += "#";
                 } else {
                     this.name += "+";
@@ -266,6 +270,7 @@ class EnPassant extends Move {
             this.name += names_columns[this.final_square[1]] + String(names_rows[this.final_square[0]]);
 
             let test_board = $.cloneDeep(this.board);
+            test_board.board.shape = this.board.board.shape;
             let test_move = new EnPassant(this.original_square, this.final_square, test_board.board.get(...this.original_square).piece, test_board, true);
             test_board.execute(test_move);
 
@@ -273,7 +278,7 @@ class EnPassant extends Move {
 
             if (to_move.check){
                 let result = test_board.calc_result();
-                if (! result === "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
+                if (result !== "" && result.split(" ")[1].replace("[", "").replace("]", "") === "CHECKMATE"){
                     this.name += "#";
                 } else {
                     this.name += "+";
@@ -412,7 +417,7 @@ class Board {
                 let o = i.attacking;
                 if (i.sliding) {
                     o = [...(function*(){for (let k of o) for (let j of k) yield j;}())];
-                    x = [...(function*(){for (let k of i.xray) for (let j of k) yield j;}())];
+                    let x = [...(function*(){for (let k of i.xray) for (let j of k) yield j;}())];
 
                     for (let u of x){
                         check_attacking.xray[u].push(i);
@@ -496,13 +501,13 @@ class Board {
                 };
             };
 
-            if (! pieces_checking.length > 1){
+            if (! (pieces_checking.length > 1)){
                 if (pieces_checking[0].sliding){
                     series = pieces_checking[0].attacking.filter(i => isIn(king.square, i))[0];
                     series = series.slice(0, -1);
                     
                     for (let i of to_move.pieces){
-                        if (! i instanceof King){
+                        if (! (i instanceof King)){
                             if (! this.is_pinned(i, king)[0]){
                                 for (let u of i.move){
                                     if (isIn(u, series)){
@@ -515,7 +520,7 @@ class Board {
                 };
 
                 for (let i of to_move.attacking[pieces_checking[0].square]){
-                    if (! this.is_pinned(i, king)[0] && ! i instanceof King){
+                    if (! this.is_pinned(i, king)[0] && ! (i instanceof King)){
                         legal_moves.push(new Move(i.square, pieces_checking[0].square, i, this));
                     };
                 };
@@ -537,7 +542,7 @@ class Board {
                         };
                     };
                 } else {
-                    if (! i instanceof King){
+                    if (! (i instanceof King)){
                         for (let o of i.move){
                             legal_moves.push(new Move(i.square, o, i , this));
                         };
@@ -582,6 +587,7 @@ class Board {
                 if (square_exists(this, [row, this.epsquare[1]+i])){
                     if (this.board.get(row, this.epsquare[1]+i).piece instanceof Pawn && this.board.get(row, this.epsquare[1]+i).piece.color === this.to_move){
                         let test_board = $.cloneDeep(this);
+                        test_board.board.shape = this.board.shape;
                         let test_move = new EnPassant([row, this.eqsquare[1]+i], this.epsquare, test_board.board.get(row, this.epsquare[1]+i).piece, test_board, true);
                         test_board.execute(test_move);
                         test_board.to_move = (test_board.to_move === "white") ? "black" : "white";
@@ -615,12 +621,12 @@ class Board {
         let copy_legal_moves = [];
         if (! $.isEqual(to_delete, [])){
             for (let i; i < legal_moves.length; i++){
-                if (! i in to_delete){
+                if (! (i in to_delete)){
                     copy_legal_moves.push(legal_moves[i]);
                 };
             };
+            legal_moves = copy_legal_moves;
         };
-        legal_moves = copy_legal_moves;
 
         let legal_moves_array;
         [legal_moves, legal_moves_array] = [Object.fromEntries(to_move.pieces.map(x => [x, []])), legal_moves];
@@ -714,18 +720,18 @@ class Board {
                 let black_p = "";
 
                 if (this.white.pieces.length <= 3){
-                    white_p = ["K", ...this.white.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+                    white_p = ["K", ...this.white.pieces.filter(i => ! (i instanceof King)).map(i => i.symbol.toUpperCase())].join("");
                 };
 
                 if (this.black.pieces.length <= 3){
-                    black_p = ["K", ...this.black.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+                    black_p = ["K", ...this.black.pieces.filter(i => ! (i instanceof King)).map(i => i.symbol.toUpperCase())].join("");
                 };
 
                 if ((white_p === "KB" || white_p === "KN" || white_p === "K") && (black_p === "KB" || black_p === "KN" || black_p === "K")){
                     this.result = "[DRAW] [INSUFFICIENT MATERIAL]";
                     if (white_p === "KB" && black_p === "KB"){
-                        let w_bishop = this.board.get(...this.white.pieces.filter(i => ! i instanceof King)[0].square).color; 
-                        let b_bishop = this.board.get(...this.black.pieces.filter(i => ! i instanceof King)[0].square).color; 
+                        let w_bishop = this.board.get(...this.white.pieces.filter(i => ! (i instanceof King))[0].square).color; 
+                        let b_bishop = this.board.get(...this.black.pieces.filter(i => ! (i instanceof King))[0].square).color; 
 
                         if (w_bishop !== b_bishop){
                             this.result = "";
@@ -761,7 +767,7 @@ class Board {
         let opp = (color === "black") ? this.white : this.black;
         this.result = `[${(opp === this.white) ? "WHITE" : "BLACK"}] [TIMEOUT]`;
         if (opp.pieces.length <= 3){
-            let opp_p = ["K", ...opp.pieces.filter(i => ! i instanceof King).map(i => i.symbol.toUpperCase())].join("");
+            let opp_p = ["K", ...opp.pieces.filter(i => ! (i instanceof King)).map(i => i.symbol.toUpperCase())].join("");
             if (opp_p in ["KB", "KN", "KNN", "K"]){
                 this.result = "[DRAW] [INSUFFICIENT MATERIAL vs TIMEOUT]";
             };
@@ -1311,4 +1317,4 @@ class King extends Piece {
     };
 };
 
-new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
+console.log(new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w").generate_legal_moves());
