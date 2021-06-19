@@ -1,6 +1,7 @@
 var nj = require("numjs");
 var $ = require("lodash");
-const { get } = require("lodash");
+var prompt = require("prompt-sync")({ sigint: true });
+const { get, replace } = require("lodash");
 
 const isUpperCase = (string) => /^[A-Z]*$/.test(string);
 const isLowerCase = (string) => /^[a-z]*$/.test(string);
@@ -503,7 +504,7 @@ class Board {
 
             if (! (pieces_checking.length > 1)){
                 if (pieces_checking[0].sliding){
-                    series = pieces_checking[0].attacking.filter(i => isIn(king.square, i))[0];
+                    let series = pieces_checking[0].attacking.filter(i => isIn(king.square, i))[0];
                     series = series.slice(0, -1);
                     
                     for (let i of to_move.pieces){
@@ -588,7 +589,7 @@ class Board {
                     if (this.board.get(row, this.epsquare[1]+i).piece instanceof Pawn && this.board.get(row, this.epsquare[1]+i).piece.color === this.to_move){
                         let test_board = $.cloneDeep(this);
                         test_board.board.shape = this.board.shape;
-                        let test_move = new EnPassant([row, this.eqsquare[1]+i], this.epsquare, test_board.board.get(row, this.epsquare[1]+i).piece, test_board, true);
+                        let test_move = new EnPassant([row, test_board.eqsquare[1]+i], test_board.epsquare, test_board.board.get(row, test_board.epsquare[1]+i).piece, test_board, true);
                         test_board.execute(test_move);
                         test_board.to_move = (test_board.to_move === "white") ? "black" : "white";
                         test_board.update();
@@ -596,7 +597,7 @@ class Board {
                         let check = (test_board.to_move === "white") ? test_board.white : test_board.black;
                         
                         if (! check.check){
-                            legal_moves.push(new EnPassant([row, this.epsquare[1]+i], this.epsquare, this.board.get(row, this.epsquare[1]+i).piece, this));
+                            legal_moves.push(new EnPassant([row, this.epsquare[1]+i], this.epsquare, this.board.get(row, this.epsquare[1]+i).piece, self));
                         };
                     };
                 };
@@ -620,7 +621,7 @@ class Board {
 
         let copy_legal_moves = [];
         if (! $.isEqual(to_delete, [])){
-            for (let i; i < legal_moves.length; i++){
+            for (let i of $.range(legal_moves.length)){
                 if (! (i in to_delete)){
                     copy_legal_moves.push(legal_moves[i]);
                 };
@@ -629,10 +630,10 @@ class Board {
         };
 
         let legal_moves_array;
-        [legal_moves, legal_moves_array] = [Object.fromEntries(to_move.pieces.map(x => [x, []])), legal_moves];
+        [legal_moves, legal_moves_array] = [new Map(to_move.pieces.map(x => [x, []])), legal_moves];
 
         for (let i of legal_moves_array){
-            legal_moves[(i instanceof KingSideCastle || i instanceof QueenSideCastle) ? to_move.pieces.filter(o => o instanceof King)[0] : i.piece].push(i);
+            legal_moves.get((i instanceof KingSideCastle || i instanceof QueenSideCastle) ? to_move.pieces.filter(o => o instanceof King)[0] : i.piece).push(i);
         };
 
         return legal_moves;
@@ -644,7 +645,7 @@ class Board {
         for (let i of attacker.attacking[piece.square]){
             if (i.sliding){
                 let series = null;
-                for (let o; o < i.attacking.length; o++){
+                for (let o of $.range(i.attacking.length)){
                     if (isIn(piece.square, i.attacking[o])){
                         series = o;
                     };
@@ -686,11 +687,12 @@ class Board {
         this.epsquare = [];
         if (this.moves.slice(-1)[0].slice(-1)[0].length === 2 && (this.moves.slice(-1)[0].slice(-1)[0].endsWith("4") || this.moves.slice(-1)[0].slice(-1)[0].endsWith("5"))){
             let last = this.moves.slice(-1)[0].slice(-1)[0];
+            let last_mover;
 
             if (this.moves.slice(-1)[0].length === 1){
-                let last_mover = "white";
+                last_mover = "white";
             } else if (this.moves.slice(-1)[0].length === 2){
-                let last_mover = "black";
+                last_mover = "black";
             };
 
             if ($.isEqual([], this.moves.filter(i => i[(last_mover === "white")?0:1] === last[0]+String((last_mover === "white")?3:6)).map(i => i[(last_mover === "white")?0:1]))){
@@ -707,7 +709,7 @@ class Board {
     calc_result(){
         if (this.result === ""){
             let legal_moves = this.generate_legal_moves();
-            legal_moves = [...(function*(){for (let k of Object.values(legal_moves)) for (let j of k) yield j;}())];
+            legal_moves = [].concat(...legal_moves.values());
             if ($.isEqual(legal_moves, [])){
                 let to_move = (this.to_move === "white") ? this.white : this.black;
                 if (to_move.check){
@@ -784,7 +786,7 @@ class Board {
     as_pgn(){
         let pgn = "";
         
-        for (let i; i < this.moves.length; i++){
+        for (let i of $.range(this.moves.length)){
             pgn += `${i+1}. ${this.moves[i][0]} ${(this.moves[i].length === 2) ? this.moves[i][1] : ""} `;
         };
 
@@ -793,9 +795,8 @@ class Board {
 
     toString(){
         let position = "";
-
-        for (let i; i < this.board.shape[0]; i++){
-            for (let o; o < this.board.shape[1]; o++){
+        for (let i of $.range(this.board.shape[0])){
+            for (let o of $.range(this.board.shape[1])){
                 if ($.isEqual([i, o], this.epsquare)){
                     //position += "x";
                     position += String(this.board.get(i, o));
@@ -1317,4 +1318,91 @@ class King extends Piece {
     };
 };
 
-console.log(new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w").generate_legal_moves());
+function render(board) {
+    console.clear();
+
+    let replacements = {
+        "K": "♔",
+        "Q": "♕",
+        "P": "♙",
+        "N": "♘",
+        "R": "♖", 
+        "B": "♗",
+        "k": "♚",
+        "q": "♛",
+        "p": "♟",
+        "n": "♞",
+        "r": "♜",
+        "b": "♝",
+    };
+
+    let fen = String(board);
+
+    for (let i of Object.keys(replacements)) {
+        fen = fen.replace(new RegExp(i, "g"), replacements[i]);
+    };
+    
+    let fen_list = [...(function*(){for (let i of $.range(8)) yield fen.slice(8*i, 8*(i+1));}())];
+    console.log(["", ...fen_list].join('\n' + " ".repeat(5)));
+};
+
+function main() {
+    let board = new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
+    let user = [true, true];
+
+    while (true) {
+        render(board);
+
+        let result = board.calc_result();
+        if (result !== "") {
+            console.log(result);
+            break;
+        };
+
+        let ask = (board.to_move === "white") ? user[0] : user[1];
+
+        if (ask) {
+            while (true) {
+                let moves = board.generate_legal_moves();
+                moves = [].concat(...moves.values());
+                
+                if (moves === []) {
+                    break;
+                };
+
+                for (let i of moves) {
+                    console.log(String(i));
+                };
+                let move = prompt(`Move for ${board.to_move}: `).trim();
+
+                if (move === "timeout") {
+                    board.timeout(board.to_move);
+                    break;
+                };
+
+                if (move === "resign") {
+                    board.resign();
+                    break;
+                };
+
+                let match = moves.filter(i => String(i).toLowerCase() === move.toLowerCase());
+                if (! $.isEqual(match, [])) {
+                    board.execute(match[0]);
+                    break;
+                };
+            };
+        } else {
+            let moves = board.generate_legal_moves();
+            moves = [].concat(...moves.values());
+
+            board.execute($.sample(moves));
+        };
+    };
+    console.log(board.moves.length);
+    console.log(board.as_pgn());
+    console.log(String(board));
+
+    render(board);
+};
+
+main();

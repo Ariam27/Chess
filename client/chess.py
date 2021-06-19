@@ -1002,7 +1002,7 @@ if __name__ == "__main__":
     Renderer = renderer(400, 400, board=board, colors=[(238,238,210), (118, 150, 56)])
     board.update()
 
-    user = (False, False)
+    user = (True, True)
 
     while True:
         pygame.event.pump()
