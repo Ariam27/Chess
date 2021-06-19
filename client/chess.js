@@ -597,7 +597,7 @@ class Board {
                         let check = (test_board.to_move === "white") ? test_board.white : test_board.black;
                         
                         if (! check.check){
-                            legal_moves.push(new EnPassant([row, this.epsquare[1]+i], this.epsquare, this.board.get(row, this.epsquare[1]+i).piece, self));
+                            legal_moves.push(new EnPassant([row, this.epsquare[1]+i], this.epsquare, this.board.get(row, this.epsquare[1]+i).piece, this));
                         };
                     };
                 };
