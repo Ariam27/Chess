@@ -9,8 +9,8 @@ const isIn = (i, o) => o.some(row => $.isEqual(row, i));
 const min = Math.min;
 const max = Math.max;
 
-var names_rows = [8, 7, 6, 5, 4, 3, 2, 1];
-var names_columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
+const names_rows = [8, 7, 6, 5, 4, 3, 2, 1];
+const names_columns = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 function square_exists(board, square, pawn=false){
     if (square[0] >= 0 && square[0] < board.board.shape[0] && square[1] >= 0 && square[1] < board.board.shape[1]){
@@ -51,7 +51,7 @@ class Move {
 
                     if (ambiguation){
                         if (i.square[1] === this.piece.square[1]){
-                            rank_ambi = String(names_row[this.piece.square[0]]);
+                            rank_ambi = String(names_rows[this.piece.square[0]]);
                         } else {
                             file_ambi = String(names_columns[this.piece.square[1]]);
                         };
@@ -275,7 +275,7 @@ class EnPassant extends Move {
             let test_move = new EnPassant(this.original_square, this.final_square, test_board.board.get(...this.original_square).piece, test_board, true);
             test_board.execute(test_move);
 
-            to_move = (test_board.to_move === "white") ? test_board.white : test_board.black;
+            let to_move = (test_board.to_move === "white") ? test_board.white : test_board.black;
 
             if (to_move.check){
                 let result = test_board.calc_result();
@@ -589,7 +589,8 @@ class Board {
                     if (this.board.get(row, this.epsquare[1]+i).piece instanceof Pawn && this.board.get(row, this.epsquare[1]+i).piece.color === this.to_move){
                         let test_board = $.cloneDeep(this);
                         test_board.board.shape = this.board.shape;
-                        let test_move = new EnPassant([row, test_board.eqsquare[1]+i], test_board.epsquare, test_board.board.get(row, test_board.epsquare[1]+i).piece, test_board, true);
+                        let column = test_board.epsquare[1]+i;
+                        let test_move = new EnPassant([row, column], test_board.epsquare, test_board.board.get(row, column).piece, test_board, true);
                         test_board.execute(test_move);
                         test_board.to_move = (test_board.to_move === "white") ? "black" : "white";
                         test_board.update();
@@ -828,7 +829,7 @@ class Piece {
         if (this.board.board.get(...this.square).piece === null){
             this.board.board.get(...this.square).piece = this;
         } else {
-            if (this.board.get(...this.square).piece.color !== this.color){
+            if (this.board.board.get(...this.square).piece.color !== this.color){
                 this.board.board.get(...this.square).piece.kill();
                 this.board.board.get(...this.square).piece = this;
             } else {
@@ -1318,8 +1319,10 @@ class King extends Piece {
     };
 };
 
-function render(board) {
-    console.clear();
+function render(board, cls=true) {
+    if (cls) {
+        console.clear();
+    };
 
     let replacements = {
         "K": "♔",
@@ -1338,9 +1341,9 @@ function render(board) {
 
     let fen = String(board);
 
-    for (let i of Object.keys(replacements)) {
-        fen = fen.replace(new RegExp(i, "g"), replacements[i]);
-    };
+    //for (let i of Object.keys(replacements)) {
+    //    fen = fen.replace(new RegExp(i, "g"), replacements[i]);
+    //};
     
     let fen_list = [...(function*(){for (let i of $.range(8)) yield fen.slice(8*i, 8*(i+1));}())];
     console.log(["", ...fen_list].join('\n' + " ".repeat(5)));
@@ -1348,7 +1351,7 @@ function render(board) {
 
 function main() {
     let board = new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
-    let user = [true, true];
+    let user = [false, false];
 
     while (true) {
         render(board);
@@ -1402,7 +1405,7 @@ function main() {
     console.log(board.as_pgn());
     console.log(String(board));
 
-    render(board);
+    render(board, false);
 };
 
 main();
