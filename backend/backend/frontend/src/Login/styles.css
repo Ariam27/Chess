@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700&display=swap");
+
+.Login {
+  background-color: #272a2c;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
+  right: 0px;
+}
+
+.title {
+  color: cornsilk;
+  text-align: center;
+  font-size: 300%;
+}
+
+.leftPanel {
+  float: left;
+  margin-left: 10%;
+  width: 40%;
+}
+
+.rightPanel {
+  float: right;
+  margin-right: 10%;
+  width: 40%;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.loginForm,
+.signupForm {
+  width: 50%;
+}
+
+.formContainer {
+  background-color: white;
+  border-radius: 0px 7px 7px 7px;
+  padding-top: 2%;
+}
+
+.labelContainer {
+  display: flex;
+  flex-direction: row;
+}
+
+.loginInputs,
+.signupInputs {
+  display: flex;
+  flex-direction: column;
+  margin: 2% 1% 2% 1%;
+}
+
+.formContainer input {
+  font-size: 100%;
+  font-family: Montserrat;
+  margin: 1%;
+  border-radius: 3px;
+}
+
+.loginLogin,
+.loginSignUp,
+.signupLogin,
+.signupSignUp {
+  margin-left: 0%;
+  margin-right: 2%;
+  font-size: 200%;
+  font-family: Montserrat;
+  padding: 2%;
+  border-radius: 7px 7px 0px 0px;
+}
+
+.loginSignUp,
+.signupLogin {
+  color: cornsilk;
+}
+
+.loginLogin,
+.signupSignUp {
+  background-color: white;
+}
+
+#loginSubmit,
+#signupSubmit {
+  background-color: rgb(118, 150, 56);
+  color: cornsilk;
+  font-size: 150%;
+  font-family: Montserrat;
+  margin: 1%;
+  border-radius: 10px;
+}
+
+#forgotPassword {
+  background-color: white;
+  color: gray;
+  font-size: 75%;
+  font-family: Montserrat;
+  text-align: left;
+  margin: 1% 1% 1% -1%;
+  border: none;
+}

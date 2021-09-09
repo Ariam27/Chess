@@ -1,6 +1,5 @@
 var nj = require("numjs");
 var $ = require("lodash");
-var prompt = require("prompt-sync")({ sigint: true });
 const { get, replace } = require("lodash");
 
 const isUpperCase = (string) => /^[A-Z]*$/.test(string);
@@ -19,7 +18,7 @@ function square_exists(board, square, pawn=false){
     return false;
 };
 
-class Move {
+export class Move {
     constructor(original_square, final_square, piece, board, test=false){
         this.original_square = original_square;
         this.final_square = final_square;
@@ -110,13 +109,14 @@ class Move {
     };
 };
 
-class KingSideCastle {
+export class KingSideCastle {
     constructor(board, test=false) {
         this.board = board;
         this.rank = (this.board.to_move === "white") ? 7 : 0;
         this.king = this.board.board.get(this.rank, 4).piece;
         this.rook = this.board.board.get(this.rank, 7).piece;
         this.piece = [this.king, this.rook];
+        this.final_square = [this.rank, 6];
 
         this.name = "0-0";
 
@@ -159,13 +159,14 @@ class KingSideCastle {
     };
 };
 
-class QueenSideCastle {
+export class QueenSideCastle {
     constructor(board, test=false) {
         this.board = board;
         this.rank = (this.board.to_move === "white") ? 7 : 0;
         this.king = this.board.board.get(this.rank, 4).piece;
         this.rook = this.board.board.get(this.rank, 0).piece;
         this.piece = [this.king, this.rook];
+        this.final_square = [this.rank, 2];
 
         this.name = "0-0-0";
 
@@ -208,7 +209,7 @@ class QueenSideCastle {
     };
 };
 
-class Promotion extends Move {
+export class Promotion extends Move {
     constructor(original_square, final_square, piece, board, promote_to, test=false) {
         super(original_square, final_square, piece, board, test);
         this.promote_to = promote_to;
@@ -260,7 +261,7 @@ class Promotion extends Move {
     };
 };
 
-class EnPassant extends Move {
+export class EnPassant extends Move {
     constructor(original_square, final_square, piece, board, test=false) {
         super(original_square, final_square, piece, board, test);
         this.name = "";
@@ -303,7 +304,7 @@ class EnPassant extends Move {
     };
 };
 
-class Square {
+export class Square {
     constructor(square, color, piece=null) {
         this.color = color;
         this.piece = piece;
@@ -315,7 +316,7 @@ class Square {
     };
 };
 
-class Side {
+export class Side {
     constructor(color) {
         this.color = color;
         this.pieces = [];
@@ -327,7 +328,7 @@ class Side {
     };
 };
 
-class Board {
+export default class Board {
     constructor(fen="8/8/8/8/8/8/8/8") {
         this.board = nj.zeros([8, 8]);
         this.fen = fen;
@@ -575,7 +576,7 @@ class Board {
             };
 
             if (this.board.get(rank, 4).piece instanceof King && this.board.get(rank, 0).piece instanceof Rook){
-                if (this.to_move.queenside_castle && $.isEqual(opponent.attacking[[rank, 2]], []) && $.isEqual(opponent.attacking[[rank, 3]], []) && this.board.get(rank, 1).piece === null && this.board.get(rank, 2).piece === null && this.board.get(rank, 3).piece === null){
+                if (to_move.queenside_castle && $.isEqual(opponent.attacking[[rank, 2]], []) && $.isEqual(opponent.attacking[[rank, 3]], []) && this.board.get(rank, 1).piece === null && this.board.get(rank, 2).piece === null && this.board.get(rank, 3).piece === null){
                     legal_moves.push(new QueenSideCastle(this));
                 };
             };
@@ -634,7 +635,7 @@ class Board {
         [legal_moves, legal_moves_array] = [new Map(to_move.pieces.map(x => [x, []])), legal_moves];
 
         for (let i of legal_moves_array){
-            legal_moves.get((i instanceof KingSideCastle || i instanceof QueenSideCastle) ? to_move.pieces.filter(o => o instanceof King)[0] : i.piece).push(i);
+            legal_moves.get((i instanceof QueenSideCastle || i instanceof KingSideCastle) ? to_move.pieces.filter(o => o instanceof King)[0] : i.piece).push(i);
         };
 
         return legal_moves;
@@ -686,7 +687,7 @@ class Board {
         };
 
         this.epsquare = [];
-        if (this.moves.slice(-1)[0].slice(-1)[0].length === 2 && (this.moves.slice(-1)[0].slice(-1)[0].endsWith("4") || this.moves.slice(-1)[0].slice(-1)[0].endsWith("5"))){
+        if (this.moves.slice(-1)[0].slice(-1)[0].length === 2 && ((this.moves.slice(-1)[0].slice(-1)[0].endsWith("4") && this.to_move === "black") || (this.moves.slice(-1)[0].slice(-1)[0].endsWith("5") && this.to_move === "white"))){
             let last = this.moves.slice(-1)[0].slice(-1)[0];
             let last_mover;
 
@@ -799,8 +800,8 @@ class Board {
         for (let i of $.range(this.board.shape[0])){
             for (let o of $.range(this.board.shape[1])){
                 if ($.isEqual([i, o], this.epsquare)){
-                    //position += "x";
-                    position += String(this.board.get(i, o));
+                    position += "x";
+                    //position += String(this.board.get(i, o));
                 } else {
                     position += String(this.board.get(i, o));
                 };
@@ -816,7 +817,7 @@ class Board {
     };
 };
 
-class Piece {
+export class Piece {
     constructor(square, color, board, symbol, sliding) {
         this.square = square;
         this.color = color;
@@ -896,7 +897,7 @@ class Knight extends Piece {
     };
 };
 
-class Queen extends Piece {
+export class Queen extends Piece {
     constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "q" : "Q", true);
         this.update();
@@ -1066,7 +1067,7 @@ class Queen extends Piece {
     };
 };
 
-class Rook extends Piece {
+export class Rook extends Piece {
     constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "r" : "R", true);
         this.update();
@@ -1168,7 +1169,7 @@ class Rook extends Piece {
     };
 };
 
-class Bishop extends Piece {
+export class Bishop extends Piece {
     constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "b" : "B", true);
         this.update();
@@ -1254,7 +1255,7 @@ class Bishop extends Piece {
     };
 };
 
-class Pawn extends Piece {
+export class Pawn extends Piece {
     constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "p" : "P", false);
 
@@ -1297,7 +1298,7 @@ class Pawn extends Piece {
     };
 };
 
-class King extends Piece {
+export class King extends Piece {
     constructor(square, color, board) {
         super(square, color, board, (color === "black") ? "k" : "K", false);
         this.update();
@@ -1318,94 +1319,3 @@ class King extends Piece {
         this.move = this.attacking.filter(i => this.board.board.get(...i).piece === null || this.board.board.get(...i).piece.color !== this.color);
     };
 };
-
-function render(board, cls=true) {
-    if (cls) {
-        console.clear();
-    };
-
-    let replacements = {
-        "K": "♔",
-        "Q": "♕",
-        "P": "♙",
-        "N": "♘",
-        "R": "♖", 
-        "B": "♗",
-        "k": "♚",
-        "q": "♛",
-        "p": "♟",
-        "n": "♞",
-        "r": "♜",
-        "b": "♝",
-    };
-
-    let fen = String(board);
-
-    //for (let i of Object.keys(replacements)) {
-    //    fen = fen.replace(new RegExp(i, "g"), replacements[i]);
-    //};
-    
-    let fen_list = [...(function*(){for (let i of $.range(8)) yield fen.slice(8*i, 8*(i+1));}())];
-    console.log(["", ...fen_list].join('\n' + " ".repeat(5)));
-};
-
-function main() {
-    let board = new Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
-    let user = [true, true];
-
-    while (true) {
-        render(board);
-
-        let result = board.calc_result();
-        if (result !== "") {
-            console.log(result);
-            break;
-        };
-
-        let ask = (board.to_move === "white") ? user[0] : user[1];
-
-        if (ask) {
-            while (true) {
-                let moves = board.generate_legal_moves();
-                moves = [].concat(...moves.values());
-                
-                if (moves === []) {
-                    break;
-                };
-
-                for (let i of moves) {
-                    console.log(String(i));
-                };
-                let move = prompt(`Move for ${board.to_move}: `).trim();
-
-                if (move === "timeout") {
-                    board.timeout(board.to_move);
-                    break;
-                };
-
-                if (move === "resign") {
-                    board.resign();
-                    break;
-                };
-
-                let match = moves.filter(i => String(i).toLowerCase() === move.toLowerCase());
-                if (! $.isEqual(match, [])) {
-                    board.execute(match[0]);
-                    break;
-                };
-            };
-        } else {
-            let moves = board.generate_legal_moves();
-            moves = [].concat(...moves.values());
-
-            board.execute($.sample(moves));
-        };
-    };
-    console.log(board.moves.length);
-    console.log(board.as_pgn());
-    console.log(String(board));
-
-    render(board, false);
-};
-
-main();
